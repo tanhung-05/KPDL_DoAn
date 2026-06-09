@@ -1,0 +1,7 @@
+pandas>=2.0
+numpy>=1.24
+fastapi>=0.116.2
+starlette>=0.48.0,<0.49.0
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+PAMI>=2026.1.19.1
