@@ -543,7 +543,7 @@ export function App() {
           </div>
           <div className="brand-copy">
             <strong>Retail Insight & Privacy</strong>
-            <span>Phân tích bán hàng & bảo vệ mẫu kinh doanh nhạy cảm</span>
+            <span>Phân tích bán hàng & bảo vệ dữ liệu kinh doanh</span>
           </div>
           <button
             className="sidebar-toggle"
@@ -559,30 +559,30 @@ export function App() {
             const state = navStates[section.key];
             return (
               <button
-                className={active === section.key ? "nav-tab active" : "nav-tab"}
+                className={`nav-tab ${active === section.key ? "active" : ""} ${state === "locked" ? "disabled" : ""}`}
                 key={section.key}
                 onClick={() => setActive(section.key)}
-                title={section.label}
+                title={state === "locked" ? `${section.label} - cần hoàn tất bước trước` : section.label}
               >
                 <Icon size={18} />
                 <span>{section.label}</span>
-                <StatusBadge state={state} compact />
               </button>
             );
           })}
         </nav>
-        <div className="run-box">
-          <span>Run ID</span>
-          <code>{runId || "Chưa có dữ liệu"}</code>
-        </div>
+        {runId ? (
+          <details className="run-box">
+            <summary>Chi tiết phiên</summary>
+            <code>{runId}</code>
+          </details>
+        ) : null}
       </aside>
 
       <section className="workspace">
         <header className="app-header">
           <div>
-            <p className="eyebrow">Business dashboard</p>
             <h1>Retail Insight & Privacy</h1>
-            <p>Phân tích bán hàng & bảo vệ mẫu kinh doanh nhạy cảm</p>
+            <p>Phân tích bán hàng & bảo vệ dữ liệu kinh doanh</p>
           </div>
           <div className="header-actions">
             <DatasetPill
@@ -746,12 +746,12 @@ function ToastStack({ toasts, onClose }: { toasts: Toast[]; onClose: (id: number
 
 function StatusBadge({ state, compact = false }: { state: StepState; compact?: boolean }) {
   const labels: Record<StepState, string> = {
-    locked: "Locked",
+    locked: "Chưa sẵn sàng",
     pending: "Chưa bắt đầu",
-    ready: "Ready",
+    ready: "Sẵn sàng",
     running: "Đang xử lý",
-    done: "Done",
-    error: "Error"
+    done: "Hoàn tất",
+    error: "Có lỗi"
   };
   return (
     <span className={`status-badge ${state}`}>
@@ -764,32 +764,44 @@ function StatusBadge({ state, compact = false }: { state: StepState; compact?: b
 }
 
 function ProgressStepper({ states }: { states: Record<string, StepState> }) {
-  const steps: { key: keyof typeof states; title: string; desc: string; icon: LucideIcon }[] = [
-    { key: "upload", title: "Tải dữ liệu bán hàng", desc: "CSV hoặc dữ liệu mẫu", icon: Upload },
-    { key: "preprocess", title: "Chuẩn hóa dữ liệu", desc: "Lọc và tạo tháng dữ liệu", icon: PackageCheck },
-    { key: "mining", title: "Tìm combo giá trị cao", desc: "Chạy khi user xác nhận", icon: Search },
-    { key: "sensitive", title: "Chọn combo nhạy cảm", desc: "Tick mẫu cần bảo vệ", icon: AlertTriangle },
-    { key: "protect", title: "Bảo vệ dữ liệu", desc: "Ẩn combo khỏi dữ liệu chia sẻ", icon: ShieldCheck },
-    { key: "verify", title: "Kiểm tra rò rỉ", desc: "Local và global leakage", icon: CheckCircle2 },
-    { key: "reports", title: "Xuất báo cáo", desc: "Tải output đã tạo", icon: Download }
+  const steps: { key: keyof typeof states; title: string; icon: LucideIcon }[] = [
+    { key: "upload", title: "Dữ liệu", icon: Upload },
+    { key: "preprocess", title: "Chuẩn hóa", icon: PackageCheck },
+    { key: "mining", title: "Combo", icon: Search },
+    { key: "sensitive", title: "Nhạy cảm", icon: AlertTriangle },
+    { key: "protect", title: "Bảo vệ", icon: ShieldCheck },
+    { key: "verify", title: "Kiểm tra", icon: CheckCircle2 },
+    { key: "reports", title: "Báo cáo", icon: Download }
   ];
+  const currentIndex = Math.max(
+    0,
+    steps.findIndex((step) => states[step.key] === "running" || states[step.key] === "ready")
+  );
+  const doneCount = steps.filter((step) => states[step.key] === "done").length;
+  const progress = Math.round((doneCount / steps.length) * 100);
   return (
-    <section className="stepper">
-      {steps.map((step) => {
-        const Icon = step.icon;
-        return (
-          <article className={`step-card ${states[step.key]}`} key={String(step.key)}>
-            <div className="step-icon">
-              <Icon size={18} />
+    <section className="workflow-strip" aria-label="Tiến trình xử lý">
+      <div className="workflow-copy">
+        <span>Tiến trình</span>
+        <strong>{progress}% hoàn tất</strong>
+      </div>
+      <div className="workflow-line">
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <div className="workflow-steps">
+        {steps.map((step, index) => {
+          const Icon = step.icon;
+          const state = states[step.key];
+          return (
+            <div className={`workflow-step ${state} ${index === currentIndex ? "current" : ""}`} key={String(step.key)} title={step.title}>
+              <span>
+                {state === "running" ? <Loader2 size={14} className="spinner" /> : <Icon size={14} />}
+              </span>
+              <small>{step.title}</small>
             </div>
-            <div>
-              <strong>{step.title}</strong>
-              <span>{step.desc}</span>
-            </div>
-            <StatusBadge state={states[step.key]} />
-          </article>
-        );
-      })}
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -825,91 +837,134 @@ function OverviewSection({
   const schema = rawSummary?.schema ?? dataset?.schema;
   const missing = asArray(schema?.missing_columns).map(String);
   const hasData = Boolean(rawSummary || dataset || completedResults);
+  const [uploadMode, setUploadMode] = useState<"new" | "completed">("new");
 
   return (
     <div className="grid two">
-      <section className="action-card">
+      <section className="hero-panel full">
+        <div>
+          <span className="eyebrow">Retail analytics workspace</span>
+          <h2>Biến dữ liệu bán hàng thành insight có thể chia sẻ an toàn.</h2>
+          <p>
+            Upload CSV, khai phá combo giá trị cao, chọn mẫu nhạy cảm và xuất báo cáo bảo vệ dữ liệu trong một luồng rõ ràng.
+          </p>
+        </div>
+        <div className={hasData ? "dataset-card ready" : "dataset-card"}>
+          <div className="dataset-card-icon">
+            {hasData ? <CheckCircle2 size={22} /> : <FileUp size={22} />}
+          </div>
+          <div>
+            <span>Dataset hiện tại</span>
+            <strong>{uploadedFile?.name ?? "Chưa có dữ liệu bán hàng"}</strong>
+            <small>
+              {hasData
+                ? `${formatNumber(readNumber(summary, ["total_rows"], 0)) || "0"} dòng • Sẵn sàng phân tích`
+                : "Upload CSV hoặc dùng dữ liệu mẫu để bắt đầu"}
+            </small>
+          </div>
+        </div>
+      </section>
+
+      <section className="action-card full">
         <div className="section-head">
           <div>
-            <h2>Tải dữ liệu bán hàng</h2>
-            <p>Upload CSV có các cột InvoiceNo, StockCode, Quantity, UnitPrice, InvoiceDate.</p>
+            <h2>Bắt đầu phân tích</h2>
+            <p>Chọn một nguồn dữ liệu. Mỗi lần chỉ hiển thị một luồng để màn hình gọn hơn.</p>
           </div>
-          <FileUp size={22} />
+          <div className="segmented-control" role="tablist" aria-label="Chọn nguồn dữ liệu">
+            <button className={uploadMode === "new" ? "active" : ""} onClick={() => setUploadMode("new")} type="button">
+              Dữ liệu mới
+            </button>
+            <button className={uploadMode === "completed" ? "active" : ""} onClick={() => setUploadMode("completed")} type="button">
+              Kết quả đã có
+            </button>
+          </div>
         </div>
-        <UploadZone
-          title="Kéo thả CSV vào đây"
-          description="Hoặc chọn file bán hàng từ máy tính"
-          accept=".csv"
-          disabled={isBusy}
-          loading={busyKey === "upload"}
-          onFiles={(files) => files[0] && onUpload(files[0])}
-        />
-        <div className="button-row">
-          <LoadingButton kind="secondary" loading={busyKey === "demo"} disabled={isBusy} onClick={onDemo}>
-            <Sparkles size={18} />
-            Dùng dữ liệu mẫu
-          </LoadingButton>
-          <LoadingButton kind="ghost" disabled={!uploadedFile || isBusy} onClick={onReset}>
-            <Trash2 size={18} />
-            Xóa / đổi file
-          </LoadingButton>
-        </div>
-        {uploadedFile ? (
-          <div className="file-card">
-            <FileText size={18} />
-            <div>
-              <strong>{uploadedFile.name}</strong>
-              <span>{formatBytes(uploadedFile.size)} • {hasData ? "Dữ liệu đã sẵn sàng để phân tích" : "Đang chờ xử lý"}</span>
+
+        {uploadMode === "new" ? (
+          <div className="upload-flow">
+            <UploadZone
+              title="Kéo thả CSV vào đây"
+              description="Hoặc chọn file bán hàng từ máy tính"
+              accept=".csv"
+              disabled={isBusy}
+              loading={busyKey === "upload"}
+              onFiles={(files) => files[0] && onUpload(files[0])}
+            />
+            <div className="button-row">
+              <LoadingButton kind="secondary" loading={busyKey === "demo"} disabled={isBusy} onClick={onDemo}>
+                <Sparkles size={18} />
+                Dùng dữ liệu mẫu
+              </LoadingButton>
+              <LoadingButton kind="ghost" disabled={!uploadedFile || isBusy} onClick={onReset}>
+                <Trash2 size={18} />
+                Xóa / đổi file
+              </LoadingButton>
+              <LoadingButton kind="primary" loading={busyKey === "preprocess"} disabled={!canPreprocess || isBusy} onClick={onPreprocess}>
+                <PackageCheck size={18} />
+                Chuẩn hóa dữ liệu
+              </LoadingButton>
             </div>
+            {uploadedFile ? (
+              <div className="file-card">
+                <FileText size={18} />
+                <div>
+                  <strong>{uploadedFile.name}</strong>
+                  <span>{formatBytes(uploadedFile.size)} • {hasData ? "Dữ liệu đã sẵn sàng để phân tích" : "Đang chờ xử lý"}</span>
+                </div>
+              </div>
+            ) : null}
+            <details className="technical subtle">
+              <summary>Cột CSV cần có</summary>
+              <div className="column-map">
+                {requiredColumns.map(([label, column]) => (
+                  <span key={column}>
+                    {label} <code>{column}</code>
+                  </span>
+                ))}
+              </div>
+            </details>
           </div>
-        ) : null}
+        ) : (
+          <div className="upload-flow">
+            <UploadZone
+              title="Kéo thả ZIP/JSON/XLSX vào đây"
+              description="Dùng khi EFIM đã chạy trên Kaggle/Colab hoặc máy khác"
+              accept=".json,.csv,.xlsx,.txt,.zip"
+              multiple
+              disabled={isBusy}
+              loading={busyKey === "completed"}
+              onFiles={onCompletedUpload}
+            />
+            <CompletedResultsStatus completedResults={completedResults} />
+          </div>
+        )}
+
         <div className={missing.length ? "notice warn" : hasData ? "notice ok" : "notice"}>
           {hasData
             ? missing.length
               ? `File thiếu cột: ${missing.join(", ")}`
-              : `File hợp lệ: ${formatNumber(summary?.total_rows)} dòng, ${formatNumber(summary?.total_columns)} cột.`
-            : "Chưa có dữ liệu bán hàng. Hãy upload CSV hoặc dùng dữ liệu mẫu để bắt đầu."}
+              : `Trạng thái tốt: ${formatNumber(summary?.total_rows)} dòng, ${formatNumber(summary?.total_columns)} cột.`
+            : "Chưa có dữ liệu. Hãy upload CSV, dùng dữ liệu mẫu hoặc tải bộ kết quả đã phân tích."}
         </div>
-        <div className="column-map">
-          {requiredColumns.map(([label, column]) => (
-            <span key={column}>
-              {label} <code>{column}</code>
-            </span>
-          ))}
-        </div>
-        <LoadingButton kind="primary" loading={busyKey === "preprocess"} disabled={!canPreprocess || isBusy} onClick={onPreprocess}>
-          <PackageCheck size={18} />
-          Chuẩn hóa dữ liệu bán hàng
-        </LoadingButton>
       </section>
 
-      <section className="action-card">
-        <div className="section-head">
-          <div>
-            <h2>Tải báo cáo phân tích đã có</h2>
-            <p>Dùng khi dữ liệu lớn hoặc EFIM đã chạy trên Kaggle/Colab.</p>
-          </div>
-          <FileArchive size={22} />
-        </div>
-        <UploadZone
-          title="Kéo thả ZIP/JSON/XLSX vào đây"
-          description="Tự nhận diện file kết quả đã phân tích"
-          accept=".json,.csv,.xlsx,.txt,.zip"
-          multiple
-          disabled={isBusy}
-          loading={busyKey === "completed"}
-          onFiles={onCompletedUpload}
-        />
-        <CompletedResultsStatus completedResults={completedResults} />
-      </section>
-
+      {!hasData ? (
+        <section className="panel full">
+          <EmptyState
+            icon={BarChart3}
+            title="Dashboard sẽ xuất hiện sau khi có dữ liệu"
+            text="Các chỉ số, biểu đồ tháng, bảng sản phẩm và kết quả bảo vệ dữ liệu được ẩn để màn hình đầu tiên nhẹ hơn."
+          />
+        </section>
+      ) : (
+        <>
       <section className="panel full">
         <div className="section-head">
           <div>
             <h2>Tổng quan bán hàng</h2>
             <p>Những chỉ số kinh doanh chính sau khi dữ liệu sẵn sàng.</p>
           </div>
-          <StatusBadge state={hasData ? "done" : "locked"} />
         </div>
         <div className="metric-grid">
           <Metric icon={BarChart3} label="Tổng doanh thu" value={formatNumber(readNumber(summary, ["total_revenue", "raw_total_utility"], 0))} hint="Tổng giá trị giao dịch hợp lệ" />
@@ -947,6 +1002,8 @@ function OverviewSection({
         <h2>Preview 10 dòng đầu</h2>
         <DataTable rows={(dataset?.preview ?? rawSummary?.preview ?? []).slice(0, 10)} />
       </section>
+        </>
+      )}
     </div>
   );
 }
@@ -954,16 +1011,22 @@ function OverviewSection({
 function CompletedResultsStatus({ completedResults }: { completedResults: CompletedResultsResponse | null }) {
   const recognized = new Set(completedResults?.recognized_files ?? []);
   return (
-    <div className="completed-list">
-      {completedResultFiles.map((file) => {
-        const hasFile = recognized.has(file) || recognized.has(file.replace("_filtered", ""));
-        return (
-          <div className={hasFile ? "completed-file ok" : "completed-file missing"} key={file}>
-            <span>{file}</span>
-            <StatusBadge state={hasFile ? "done" : "locked"} compact />
-          </div>
-        );
-      })}
+    <details className="completed-list">
+      <summary>
+        <span>Checklist file kết quả</span>
+        <small>{completedResults ? `${recognized.size} file đã nhận diện` : "Mở để xem file khuyến nghị"}</small>
+      </summary>
+      <div className="completed-files">
+        {completedResultFiles.map((file) => {
+          const hasFile = recognized.has(file) || recognized.has(file.replace("_filtered", ""));
+          return (
+            <div className={hasFile ? "completed-file ok" : "completed-file missing"} key={file}>
+              <span>{file}</span>
+              {hasFile ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+            </div>
+          );
+        })}
+      </div>
       {completedResults?.validation_warnings.length ? (
         <div className="notice warn">
           {completedResults.validation_warnings.slice(0, 4).map((warning) => (
@@ -971,7 +1034,7 @@ function CompletedResultsStatus({ completedResults }: { completedResults: Comple
           ))}
         </div>
       ) : null}
-    </div>
+    </details>
   );
 }
 
